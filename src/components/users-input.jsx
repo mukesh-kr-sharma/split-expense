@@ -62,7 +62,7 @@ const UsersInput = () => {
             setUsers(tmp)
         }
         setUsersState()
-    }, [])
+    }, [expenseID])
 
 
     return (

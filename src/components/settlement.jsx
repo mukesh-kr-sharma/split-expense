@@ -33,7 +33,7 @@ const SettlementSuggestion = () => {
             setExpenseDetails(data.expense)
         }
         getExpenseDetails()
-    }, [])
+    }, [expenseID])
 
     useEffect(() => {
         if (expenseDetails.id) {

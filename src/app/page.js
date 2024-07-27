@@ -3,16 +3,14 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from "@/components/ui/button";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Header from "@/components/header";
 import UsersInput from "@/components/users-input";
 import ExpensesInput from "@/components/expenses-input";
 import SettlementSuggestion from "@/components/settlement";
 import { Input } from '@/components/ui/input';
 
-
-export default function Home() {
-
+function HomePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [expenseID, setExpenseID] = useState(undefined)
@@ -65,4 +63,11 @@ export default function Home() {
       </main>
     </div>
   )
+}
+
+export default function Home() {
+  return <Suspense>
+    <HomePage />
+  </Suspense>
+
 }

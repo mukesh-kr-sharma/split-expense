@@ -27,7 +27,7 @@ export function SelectUsersPopover({ selectedUsers, setSelectedUsers }) {
             setUsers(tmp)
         }
         setUsersState()
-    }, [])
+    }, [expenseID])
 
     return (
         <Popover>

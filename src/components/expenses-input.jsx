@@ -68,7 +68,7 @@ const ExpensesInput = () => {
 
     setUsersState()
     setExpenseTxnState()
-  }, [])
+  }, [expenseID])
 
   useEffect(() => {
     console.log(expenses)
