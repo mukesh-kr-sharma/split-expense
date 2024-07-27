@@ -21,13 +21,8 @@ import {
 
 
 
-export function ComboBox({options, innerRef}) {
+export function ComboBox({ options, value, setValue }) {
     const [open, setOpen] = React.useState(false)
-    const [value, setValue] = React.useState("")
-
-    React.useEffect(()=>{
-        innerRef.current = value
-    }, [value])
 
     return (
         <Popover open={open} onOpenChange={setOpen}>

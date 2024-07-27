@@ -2,10 +2,10 @@
 
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, } from "@/components/ui/card"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle, } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, } from "@/components/ui/table"
-import { useContext, useEffect, useState } from "react";
-import MyContext from "@/my-context";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const absoluteSum = (list) => {
     let sum = 0
@@ -15,82 +15,109 @@ const absoluteSum = (list) => {
 }
 
 const SettlementSuggestion = () => {
-    const { context, setContext } = useContext(MyContext)
+    const router = useRouter()
+    const searchParams = useSearchParams()
+
+    const expenseID = searchParams.get("expense_id")
+
     const [settlements, setSettlements] = useState([])
+    const [expenseDetails, setExpenseDetails] = useState({})
 
     useEffect(() => {
-        const users = context['users'] || []
-        const expenses = context['expenses'] || []
+        const getExpenseDetails = async () => {
+            const response = await fetch(`/api/expense?expense_id=${expenseID}`);
+            if (!response.ok) {
+                throw new Error(`Response status: ${response.status}`);
+            }
+            const data = await response.json()
+            setExpenseDetails(data.expense)
+        }
+        getExpenseDetails()
+    }, [])
 
-        var expense_summary = {}
+    useEffect(() => {
+        if (expenseDetails.id) {
+            const users = expenseDetails?.users
+            const transactions = expenseDetails?.transactions
 
-        users.map((user) => {
-            let total_paid = 0
-            let self_expense = 0
+            var expense_summary = {}
 
-            expenses.forEach((record) => {
-                if (record['paid_by'] == user)
-                    total_paid = total_paid + parseInt(record['amount'])
+            users?.map((user) => {
+                let total_paid = 0
+                let self_expense = 0
+                transactions.forEach((record) => {
+                    if (record['paid_by']['id'] == user.id)
+                        total_paid = total_paid + parseInt(record['amount'])
 
-                if (record['participants'].includes(user))
-                    self_expense += Math.round(record['amount'] / record['participants'].length)
+                    if (record['participants'].map((participant) => participant.id).includes(user.id))
+                        self_expense += Math.round(record['amount'] / record['participants'].length)
+                })
 
+                let net_amount = total_paid - self_expense
+                expense_summary[user.id] = {
+                    name: user.name,
+                    amount: net_amount
+                }
             })
 
-            let net_amount = total_paid - self_expense
-            expense_summary[user] = net_amount
-        })
+            var tmp_settlements = []
+            var iterCount = 0
+            console.log(absoluteSum(Object.entries(expense_summary).map(v => v[1].amount)))
+            while (absoluteSum(Object.entries(expense_summary).map(v => v[1].amount)) > users?.length && iterCount < 1000) {
+                iterCount += 1
 
-        var tmp_settlements = []
-        var iterCount = 0
-        while (absoluteSum(Object.values(expense_summary)) > users.length && iterCount < 1000) {
-            iterCount += 1
+                let min_user_id = Object.keys(expense_summary)[0]
+                let min_amount = Object.values(expense_summary)[0]['amount']
 
-            let min_key = Object.keys(expense_summary)[0]
-            let min_value = Object.values(expense_summary)[0]
+                let max_user_id = min_user_id
+                let max_amount = min_amount
 
-            let max_key = min_key
-            let max_value = min_value
+                for (let key in expense_summary) {
+                    if (expense_summary[key] === 0) {
+                        delete expense_summary[key]
+                        continue
+                    }
 
-            for (const key in expense_summary) {
-                if (expense_summary[key] === 0) {
-                    delete expense_summary[key]
-                    continue
+                    if (expense_summary[key]['amount'] < min_amount) {
+                        min_user_id = key
+                        min_amount = expense_summary[key]['amount']
+                    }
+                    if (expense_summary[key]['amount'] > max_amount) {
+                        max_user_id = key
+                        max_amount = expense_summary[key]['amount']
+                    }
                 }
 
-                if (expense_summary[key] < min_value) {
-                    min_key = key
-                    min_value = expense_summary[key]
-                }
-                if (expense_summary[key] > max_value) {
-                    max_key = key
-                    max_value = expense_summary[key]
+                if (Math.abs(min_amount) < max_amount) {
+                    tmp_settlements.push({
+                        'from': {id: min_user_id, name: expense_summary[min_user_id]['name']},
+                        'to': {id: max_user_id, name: expense_summary[max_user_id]['name']},
+                        'amount': Math.abs(min_amount)
+                    })
+                    delete expense_summary[min_user_id]
+                    expense_summary[max_user_id]['amount'] = min_amount + max_amount
+                } else {
+                    tmp_settlements.push({
+                        'from': {id: min_user_id, name: expense_summary[min_user_id]['name']},
+                        'to': {id: max_user_id, name: expense_summary[max_user_id]['name']},
+                        'amount': max_amount
+                    })
+                    delete expense_summary[max_user_id]
+                    expense_summary[min_user_id]['amount'] = min_amount + max_amount
                 }
             }
-
-            if (Math.abs(min_value) < max_value) {
-                tmp_settlements.push({
-                    'from': min_key,
-                    'to': max_key,
-                    'amount': Math.abs(min_value)
-                })
-                delete expense_summary[min_key]
-                expense_summary[max_key] = min_value + max_value
-            } else {
-                tmp_settlements.push({
-                    'from': min_key,
-                    'to': max_key,
-                    'amount': max_value
-                })
-                delete expense_summary[max_key]
-                expense_summary[min_key] = min_value + max_value
-            }
+            setSettlements(tmp_settlements)
         }
-        setSettlements(tmp_settlements)
-    }, [context])
+    }, [expenseDetails])
+
+
+    useEffect(()=>{
+        console.log(settlements)
+    }, [settlements])
+
 
     return (
-        <Card className="w-[500px] hidden" id="settlement-card">
+        <Card className="w-[500px]">
             <CardHeader>
                 <CardTitle>Settlement</CardTitle>
             </CardHeader>
@@ -108,10 +135,10 @@ const SettlementSuggestion = () => {
                             {settlements.map((record, index) => (
                                 <TableRow key={index}>
                                     <TableCell>
-                                        {record["from"]}
+                                        {record["from"]["name"]}
                                     </TableCell>
                                     <TableCell>
-                                        {record["to"]}
+                                        {record["to"]["name"]}
                                     </TableCell>
                                     <TableCell className="text-right">
                                         Rs. {record["amount"]}
@@ -126,11 +153,7 @@ const SettlementSuggestion = () => {
 
             </CardContent>
             <CardFooter>
-                <Button onClick={() => {
-                    document.getElementById("add-user-card").classList.add("hidden");;
-                    document.getElementById("add-expense-card").classList.remove("hidden");
-                    document.getElementById("settlement-card").classList.add("hidden");
-                }}>Previous</Button>
+                <Button onClick={() => router.push(`/?expense_id=${expenseID}&active_page=transactions`)}>Previous</Button>
             </CardFooter>
         </Card>
     )

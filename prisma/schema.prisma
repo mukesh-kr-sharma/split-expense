@@ -1,0 +1,45 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["relationJoins"]
+}
+
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model Expense {
+  id              String    @id   @default(uuid())
+  users           ExpenseUser[]
+  transactions    ExpenseTransaction[]
+}
+
+
+model ExpenseUser {
+  id              Int       @id   @default(autoincrement())
+  expense_id      String
+  name            String
+  expense         Expense   @relation(fields: [expense_id], references: [id])
+  expenses_paid         ExpenseTransaction[] @relation(name: "PaidBy")
+  expenses_participant  ExpenseTransaction[] @relation(name: "Participants")
+}
+
+
+model ExpenseTransaction {
+  id              Int       @id   @default(autoincrement())
+  expense_id      String
+  expense         Expense   @relation(fields: [expense_id], references: [id])
+  paid_for        String
+  paid_by_user_id Int
+  paid_by         ExpenseUser @relation(name: "PaidBy", fields: [paid_by_user_id], references: [id])
+  amount          Int
+  participants    ExpenseUser[] @relation(name: "Participants")
+}

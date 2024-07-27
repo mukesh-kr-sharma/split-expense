@@ -8,18 +8,26 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover"
-import MyContext from "@/my-context"
-import { useContext, useEffect, useState } from "react"
 
-export function SelectUsersPopover({innerRef}) {
-    const { context, setContext } = useContext(MyContext)
-    const usersCount = context.users ? context.users.length : 0
-    const [selectedUsers, setSelectedUsers] = useState([])
+import { useEffect, useState } from "react"
+import { fetchUsers } from "./users-input"
+import { useSearchParams } from "next/navigation"
+
+export function SelectUsersPopover({ selectedUsers, setSelectedUsers }) {
+    const [users, setUsers] = useState([]);
+    const usersCount = users ? users.length : 0
+
+    const searchParams = useSearchParams()
+
+    const expenseID = searchParams.get("expense_id")
 
     useEffect(() => {
-        console.log(selectedUsers)
-        innerRef.current = selectedUsers
-    }, [selectedUsers])
+        const setUsersState = async () => {
+            let tmp = await fetchUsers(expenseID)
+            setUsers(tmp)
+        }
+        setUsersState()
+    }, [])
 
     return (
         <Popover>
@@ -32,18 +40,23 @@ export function SelectUsersPopover({innerRef}) {
             <PopoverContent className="">
                 <div className="flex items-center space-x-2 py-2">
                     <Checkbox id="selected-user-all" checked={usersCount == selectedUsers.length} onCheckedChange={
-                        (checked) => checked ? setSelectedUsers(context.users) : setSelectedUsers([])}
+                        (checked) => checked ? setSelectedUsers(users.map((user) => {
+                            delete user['expense_id']
+                            return user
+                        })) : setSelectedUsers([])}
                     />
                     <label htmlFor="selected-user-all" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">All</label>
                 </div>
-                {context.users && context.users.map((user, index) => (
-                    <div className="flex items-center space-x-2 py-2" key={index}>
-                        <Checkbox id={"selected-user-" + index} checked={selectedUsers.includes(user)} onCheckedChange={
-                            (checked) => checked ?
+                {users?.map((user) => (
+                    <div className="flex items-center space-x-2 py-2" key={user.id}>
+                        <Checkbox id={"selected-user-" + user} checked={selectedUsers.includes(user)} onCheckedChange={(checked) => {
+                            delete user['expense_id']
+                            checked ?
                                 setSelectedUsers([...selectedUsers, user]) :
-                                setSelectedUsers(selectedUsers.filter((val) => val != user))
+                                setSelectedUsers(selectedUsers.filter((val) => val.id != user.id))
+                        }
                         } />
-                        <label htmlFor={"selected-user-" + index} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">{user}</label>
+                        <label htmlFor={"selected-user-" + user} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">{user.name}</label>
                     </div>
                 ))}
             </PopoverContent>
