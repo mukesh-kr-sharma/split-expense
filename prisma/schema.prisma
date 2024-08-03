@@ -5,41 +5,45 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   previewFeatures = ["relationJoins"]
 }
-
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
+model expense_group {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  created_by  String?
+  created_at  DateTime @default(now())
+  is_public   Boolean  @default(false)
 
-model Expense {
-  id              String    @id   @default(uuid())
-  users           ExpenseUser[]
-  transactions    ExpenseTransaction[]
+  expense_users expense_user[]
+  transactions  expense_transaction[]
 }
 
+model expense_user {
+  id           Int     @id @default(autoincrement())
+  expense_id   String
+  name         String
+  auth_user_id String?
 
-model ExpenseUser {
-  id              Int       @id   @default(autoincrement())
-  expense_id      String
-  name            String
-  expense         Expense   @relation(fields: [expense_id], references: [id])
-  expenses_paid         ExpenseTransaction[] @relation(name: "PaidBy")
-  expenses_participant  ExpenseTransaction[] @relation(name: "Participants")
+  expense_group        expense_group[]
+  expenses_paid        expense_transaction[] @relation(name: "paid_by")
+  expenses_participant expense_transaction[] @relation(name: "participants")
 }
 
-
-model ExpenseTransaction {
-  id              Int       @id   @default(autoincrement())
-  expense_id      String
-  expense         Expense   @relation(fields: [expense_id], references: [id])
-  paid_for        String
-  paid_by_user_id Int
-  paid_by         ExpenseUser @relation(name: "PaidBy", fields: [paid_by_user_id], references: [id])
-  amount          Int
-  participants    ExpenseUser[] @relation(name: "Participants")
+model expense_transaction {
+  id            Int            @id @default(autoincrement())
+  item_name     String
+  paid_by_id    Int
+  amount        Float
+  paid_by       expense_user   @relation(name: "paid_by", fields: [paid_by_id], references: [id])
+  expense_id    String
+  expense_group expense_group  @relation(fields: [expense_id], references: [id])
+  participants  expense_user[] @relation(name: "participants")
 }
